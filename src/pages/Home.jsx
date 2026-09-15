@@ -1,7 +1,13 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ResultCards from '../components/ResultCards.jsx';
 import MiniRiskGauge from '../components/MiniRiskGauge.jsx';
 import UnitToggle from '../components/UnitToggle.jsx';
+import InstallPrompt from '../components/InstallPrompt.jsx';
+import MedicationSheet from '../components/MedicationSheet.jsx';
+import WellnessSheet from '../components/WellnessSheet.jsx';
+import LabScanButton from '../components/LabScanButton.jsx';
+import { getStreak, isLoggedToday } from '../utils/doseLogs.js';
+import { getResultsHistory, addResultToHistory, computeRetestDate } from '../utils/resultsHistory.js';
 import {
   TSH_TARGETS,
   SYMPTOM_OPTIONS,
@@ -63,8 +69,60 @@ export default function Home({ onDxChange }) {
   const [pulseTick, setPulseTick] = useState(0);
   const timersRef = useRef([]);
 
+  const [medSheetOpen, setMedSheetOpen] = useState(false);
+  const [wellnessSheetOpen, setWellnessSheetOpen] = useState(false);
+  const [doseVersion, setDoseVersion] = useState(0);
+  const [today, setToday] = useState(() => new Date());
+  const [autofillFields, setAutofillFields] = useState(new Set());
+  const [scanNote, setScanNote] = useState(null);
+  const [resultsHistory, setResultsHistory] = useState(() => getResultsHistory());
+
+  useEffect(() => {
+    const t = setInterval(() => setToday(new Date()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Deep link handling — a notification tap opens the app with ?action=...
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    if (action === 'log-dose') {
+      setMedSheetOpen(true);
+    } else if (action === 'wellness-checkin') {
+      setWellnessSheetOpen(true);
+    } else if (action === 'log-results') {
+      document.querySelector('.input-card')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, []);
+
   function update(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
+    setAutofillFields((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }
+
+  function handleLabScanExtracted(result) {
+    const fields = new Set();
+    setForm((f) => {
+      const next = { ...f };
+      if (result.tsh != null) { next.tsh = String(result.tsh); fields.add('tsh'); }
+      if (result.ft3 != null) { next.ft3 = String(result.ft3); fields.add('ft3'); }
+      if (result.ft4 != null) { next.ft4 = String(result.ft4); fields.add('ft4'); }
+      return next;
+    });
+    setAutofillFields(fields);
+
+    if (fields.size === 0) {
+      setScanNote({ kind: 'fail', text: 'Could not read any values clearly — please enter manually' });
+    } else if (result.confidence < 0.7 || fields.size < 3) {
+      setScanNote({ kind: 'partial', text: 'Could not read all values clearly — please enter manually' });
+    } else {
+      setScanNote({ kind: 'ok', text: `Values extracted with ${Math.round(result.confidence * 100)}% confidence — please verify before analyzing` });
+    }
   }
 
   function toggleUnit(key) {
@@ -119,7 +177,19 @@ export default function Home({ onDxChange }) {
     const score = calculateRisk(tsh, ft4, ft3, age ?? 30, form.status, resolvedSymptom);
 
     const comparison = compareToLast(tsh, target);
-    saveLastResult({ tsh, target, date: new Date().toISOString().slice(0, 10) });
+    const analysisDate = new Date().toISOString().slice(0, 10);
+    saveLastResult({ tsh, target, date: analysisDate });
+
+    // Full history (distinct from the single "last result" above) — powers
+    // the TSH trend prediction and dose-response table.
+    const historyEntry = {
+      date: analysisDate,
+      tsh, ft3, ft4, dose,
+      dx,
+      status: form.status,
+      retestDate: computeRetestDate(analysisDate, dx),
+    };
+    const updatedHistory = addResultToHistory(historyEntry);
 
     // Always derived fresh from whatever was actually entered this run —
     // no preset or cached assumptions about what the result "should" be.
@@ -169,6 +239,7 @@ export default function Home({ onDxChange }) {
       setResult(data);
       setRiskScore(score);
       setAnalyzing(false);
+      setResultsHistory(updatedHistory);
       onDxChange?.(data.dx);
       if (hadResult) setPulseTick((t) => t + 1);
     }, TOTAL_MS);
@@ -183,6 +254,10 @@ export default function Home({ onDxChange }) {
   }
 
   const gaugeState = analyzing ? 'analyzing' : result ? 'done' : 'idle';
+  const streak = getStreak();
+  const loggedToday = isLoggedToday();
+  const headerDate = `${today.toLocaleDateString('en-US', { weekday: 'short' })}, ${today.getDate()} ${today.toLocaleDateString('en-US', { month: 'short' })}`;
+  const latestRetestDate = resultsHistory.length ? resultsHistory[resultsHistory.length - 1].retestDate : null;
 
   return (
     <>
@@ -191,8 +266,25 @@ export default function Home({ onDxChange }) {
           <div className="logo-icon">{'\u{1FAC0}'}</div>
           <div className="logo-text">Thyro<span>Track</span></div>
         </div>
-        <div className="header-badge">Thyroid Health Monitor</div>
+        <div className="header-right">
+          {streak >= 2 && (
+            <span className="header-streak" title="Medication streak">{`\u{1F525} ${streak}`}</span>
+          )}
+          <span className="header-date">{headerDate}</span>
+          <button
+            type="button"
+            className={`med-pill-btn${loggedToday ? ' logged' : ' pending'}`}
+            onClick={() => setMedSheetOpen(true)}
+            title="Log today's dose"
+            aria-label="Medication log"
+          >
+            {'\u{1F48A}'}
+          </button>
+          <div className="header-badge">Thyroid Health Monitor</div>
+        </div>
       </header>
+
+      <InstallPrompt />
 
       <main>
         <div className="input-card">
@@ -226,17 +318,24 @@ export default function Home({ onDxChange }) {
           <div className="input-card-header">
             <div>
               <div className="section-label">Lab Results Entry</div>
-              <div className="section-title">Enter your thyroid panel</div>
+              <div className="section-title-row">
+                <div className="section-title">Enter your thyroid panel</div>
+                <LabScanButton onExtracted={handleLabScanExtracted} />
+              </div>
               <div className="section-sub">Input your most recent blood test values. All analysis is done locally — your data stays with you.</div>
             </div>
             <MiniRiskGauge state={gaugeState} score={riskScore} fromScore={fromScore} triggerId={runId} />
           </div>
 
+          {scanNote && (
+            <div className={`scan-note scan-note-${scanNote.kind}`}>{scanNote.text}</div>
+          )}
+
           <div className="form-grid">
             <div className="field">
               <label>TSH — Thyroid Stimulating Hormone</label>
               <div className="field-inner">
-                <input className={flashKey === 'tsh' ? 'unit-flash' : ''} type="number" step="0.01" placeholder="e.g. 9.96" value={form.tsh} onChange={(e) => update('tsh', e.target.value)} />
+                <input className={[flashKey === 'tsh' && 'unit-flash', autofillFields.has('tsh') && 'autofilled'].filter(Boolean).join(' ')} type="number" step="0.01" placeholder="e.g. 9.96" value={form.tsh} onChange={(e) => update('tsh', e.target.value)} />
                 <UnitToggle unit={form.tshUnit || 'mIU/L'} onClick={() => toggleUnit('tsh')} />
               </div>
               <div className="ref-row">Ref: {refRowText('tsh', form.tshUnit)}</div>
@@ -244,7 +343,7 @@ export default function Home({ onDxChange }) {
             <div className="field">
               <label>Free T3 — Triiodothyronine</label>
               <div className="field-inner">
-                <input className={flashKey === 'ft3' ? 'unit-flash' : ''} type="number" step="0.01" placeholder="e.g. 4.26" value={form.ft3} onChange={(e) => update('ft3', e.target.value)} />
+                <input className={[flashKey === 'ft3' && 'unit-flash', autofillFields.has('ft3') && 'autofilled'].filter(Boolean).join(' ')} type="number" step="0.01" placeholder="e.g. 4.26" value={form.ft3} onChange={(e) => update('ft3', e.target.value)} />
                 <UnitToggle unit={form.ft3Unit || 'pmol/L'} onClick={() => toggleUnit('ft3')} />
               </div>
               <div className="ref-row">Ref: {refRowText('ft3', form.ft3Unit)}</div>
@@ -252,7 +351,7 @@ export default function Home({ onDxChange }) {
             <div className="field">
               <label>Free T4 — Thyroxine</label>
               <div className="field-inner">
-                <input className={flashKey === 'ft4' ? 'unit-flash' : ''} type="number" step="0.01" placeholder="e.g. 11.58" value={form.ft4} onChange={(e) => update('ft4', e.target.value)} />
+                <input className={[flashKey === 'ft4' && 'unit-flash', autofillFields.has('ft4') && 'autofilled'].filter(Boolean).join(' ')} type="number" step="0.01" placeholder="e.g. 11.58" value={form.ft4} onChange={(e) => update('ft4', e.target.value)} />
                 <UnitToggle unit={form.ft4Unit || 'pmol/L'} onClick={() => toggleUnit('ft4')} />
               </div>
               <div className="ref-row">Ref: {refRowText('ft4', form.ft4Unit)}</div>
@@ -379,8 +478,22 @@ export default function Home({ onDxChange }) {
           automations={automations}
           onNewResults={handleNewResults}
           pulseTick={pulseTick}
+          resultsHistory={resultsHistory}
+          reportInfo={{ status: form.status, dose: form.dose }}
         />
       </main>
+
+      <MedicationSheet
+        open={medSheetOpen}
+        onClose={() => setMedSheetOpen(false)}
+        dose={form.dose}
+        onLogged={() => setDoseVersion((v) => v + 1)}
+      />
+      <WellnessSheet
+        open={wellnessSheetOpen}
+        onClose={() => setWellnessSheetOpen(false)}
+        nextRetestDate={latestRetestDate}
+      />
     </>
   );
 }

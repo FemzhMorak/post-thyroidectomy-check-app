@@ -1,0 +1,24 @@
+{
+  "name": "ThyroTrack",
+  "short_name": "ThyroTrack",
+  "description": "Thyroid health monitor for post-thyroidectomy patients",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060d1a",
+  "theme_color": "#3B82F6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

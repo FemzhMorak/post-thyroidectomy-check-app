@@ -1446,26 +1446,51 @@ header, main {
   transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.result-card.phase-scale .card-flip-inner { transform: scale(1.05) rotateY(0deg); transition: transform 100ms ease-out; }
-.result-card.phase-flip1 .card-flip-inner { transform: scale(1.05) rotateY(90deg); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1); }
+.result-card.phase-scale .card-flip-inner { transform: scale(1.03) rotateY(0deg); transition: transform 100ms ease-out; }
+.result-card.phase-flip1 .card-flip-inner { transform: scale(1.03) rotateY(90deg); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1); }
 .result-card.phase-flip2 .card-flip-inner,
 .result-card.phase-open .card-flip-inner { transform: rotateY(180deg); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1); }
 .result-card.phase-closing1 .card-flip-inner { transform: rotateY(90deg); transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1); }
 .result-card.phase-closing2 .card-flip-inner { transform: rotateY(0deg); transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1); }
 
-.result-card.fullscreen {
+/* Floating centered modal — replaces the old full-viewport takeover.
+   The form and cards behind stay visible, dimmed and blurred by the
+   backdrop rather than being covered edge-to-edge. */
+.card-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 499;
+  background: rgba(6, 13, 26, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: cardModalBackdropIn 200ms ease;
+}
+
+@keyframes cardModalBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.result-card.card-modal {
   position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
+  top: 50% !important;
+  left: 50% !important;
   right: auto;
   bottom: auto;
-  width: 100vw !important;
-  height: 100vh !important;
-  border-radius: 0 !important;
-  z-index: 1000 !important;
-  box-shadow: none !important;
-  border: none !important;
-  transform: none !important;
+  transform: translate(-50%, -50%) !important;
+  width: min(680px, 90vw) !important;
+  height: min(82vh, 700px) !important;
+  border-radius: 20px !important;
+  z-index: 500 !important;
+  overflow: hidden;
+}
+
+@media (max-width: 600px) {
+  .result-card.card-modal {
+    width: 95vw !important;
+    height: 90vh !important;
+    border-radius: 16px !important;
+  }
 }
 
 .card-face-back {
@@ -1487,7 +1512,7 @@ header, main {
 }
 
 .card-back-header {
-  height: 56px;
+  height: 48px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -1505,8 +1530,8 @@ header, main {
 }
 
 .card-close-btn {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--navy-light);
   color: var(--white);
@@ -1874,4 +1899,550 @@ header, main {
   color: var(--muted);
   font-style: italic;
   padding: 0 0.75rem 0.75rem;
+}
+
+/* ============================================================
+   HEADER — streak, date, medication pill
+   ============================================================ */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.header-streak {
+  font-size: 0.75rem;
+  color: var(--amber);
+  font-family: 'JetBrains Mono', monospace;
+  cursor: default;
+}
+
+.header-date {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.med-pill-btn {
+  background: var(--navy-light);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.med-pill-btn:hover { border-color: var(--blue); }
+
+.med-pill-btn.logged {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.med-pill-btn.pending {
+  animation: medPillPulse 2s ease-in-out infinite;
+}
+
+@keyframes medPillPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+}
+
+/* ============================================================
+   PWA INSTALL BANNER
+   ============================================================ */
+.install-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 800;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 0.9rem 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  animation: installBannerIn 300ms ease-out;
+}
+
+@keyframes installBannerIn {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.install-banner-text {
+  font-size: 0.85rem;
+  color: var(--white);
+}
+
+.install-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.install-banner-btn {
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+
+.install-banner-btn:hover { background: #2563EB; }
+
+.install-banner-dismiss {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.install-banner-dismiss:hover { color: var(--white); }
+
+/* ============================================================
+   LAB PHOTO SCAN
+   ============================================================ */
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.lab-scan-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+
+.lab-scan-btn:hover { border-color: var(--blue); color: var(--white); }
+.lab-scan-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.lab-scan-error {
+  font-size: 0.7rem;
+  color: var(--red);
+  margin-top: 4px;
+  max-width: 220px;
+  text-align: right;
+}
+
+.scan-note {
+  font-size: 0.78rem;
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  margin-bottom: 1.2rem;
+  line-height: 1.4;
+}
+
+.scan-note-ok {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: var(--dim);
+}
+
+.scan-note-partial,
+.scan-note-fail {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: var(--amber);
+}
+
+.field input.autofilled {
+  border-color: var(--blue);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+/* ============================================================
+   BOTTOM SHEETS (medication log / wellness check)
+   ============================================================ */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 599;
+  background: rgba(6, 13, 26, 0.8);
+  animation: sheetBackdropIn 200ms ease;
+}
+
+@keyframes sheetBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 600;
+  height: auto;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid var(--border);
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 1.5rem 2rem;
+  animation: sheetSlideUp 400ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 12px auto;
+  cursor: pointer;
+}
+
+.sheet-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.sheet-subtitle {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 2px;
+  margin-bottom: 1.2rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.drug-info-card {
+  background: var(--navy-mid);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.drug-info-name {
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 0.5rem;
+}
+
+.drug-info-line {
+  font-size: 0.8rem;
+  color: var(--dim);
+  line-height: 1.5;
+}
+
+.drug-info-line.drug-info-warn {
+  color: var(--red);
+}
+
+.btn-take-med {
+  width: 100%;
+  height: 56px;
+  background: var(--green);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-take-med:hover:not(:disabled) { background: #0da271; }
+.btn-take-med:active:not(:disabled) { transform: scale(0.99); }
+
+.btn-take-med.logged {
+  background: var(--green-dim);
+  color: var(--green);
+  cursor: default;
+}
+
+.med-streak-badge {
+  text-align: center;
+  color: var(--amber);
+  font-size: 0.85rem;
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 0.8rem;
+  animation: medStreakIn 300ms ease-out;
+}
+
+@keyframes medStreakIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.med-next-dose {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 0.6rem;
+}
+
+.med-adherence {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--dim);
+  margin-top: 0.3rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.missed-dose-link {
+  display: block;
+  margin: 1rem auto 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+
+.missed-dose-note {
+  margin-top: 0.8rem;
+  font-size: 0.78rem;
+  color: var(--dim);
+  background: var(--navy-mid);
+  border-left: 3px solid var(--amber);
+  border-radius: 8px;
+  padding: 0.8rem;
+  line-height: 1.5;
+}
+
+.missed-week-warning {
+  margin-top: 1.2rem;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+}
+
+.missed-week-title {
+  color: var(--red);
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 3px;
+}
+
+.missed-week-sub {
+  color: var(--dim);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+/* Wellness sheet */
+.wellness-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.wellness-btn {
+  width: 100%;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 1.2rem;
+  border-radius: 12px;
+  border: 1px solid;
+  font-size: 1rem;
+  color: var(--white);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: transform 0.15s;
+}
+
+.wellness-btn.selected {
+  animation: wellnessPulse 200ms ease;
+}
+
+@keyframes wellnessPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.wellness-emoji { font-size: 1.4rem; }
+
+.wellness-check {
+  margin-left: auto;
+  color: var(--green);
+  font-weight: 700;
+}
+
+.wellness-previous-row {
+  display: flex;
+}
+
+.wellness-previous-badge {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 1.2rem;
+  border-radius: 12px;
+  border: 1px solid;
+  color: var(--white);
+  font-size: 0.95rem;
+}
+
+.wellness-previous-time {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 0.6rem;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.wellness-update-link {
+  display: block;
+  margin: 0.6rem auto 0;
+  background: none;
+  border: none;
+  color: var(--blue);
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+
+.wellness-update-link:hover { text-decoration: underline; }
+
+.wellness-followup-message {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: var(--dim);
+  background: var(--navy-mid);
+  border-radius: 8px;
+  padding: 0.8rem;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   TSH TREND PREDICTION
+   ============================================================ */
+.trend-prediction-card {
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.trend-prediction-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.trend-prediction-text {
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   DOSE-TO-TSH CORRELATION
+   ============================================================ */
+.dose-correlation-card {
+  margin-top: 1.5rem;
+}
+
+.dose-correlation-table-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-top: 0.5rem;
+}
+
+.dose-correlation-table {
+  width: 100%;
+  min-width: 380px;
+  border-collapse: collapse;
+}
+
+.dose-correlation-table th {
+  text-align: left;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--dim);
+  background: var(--navy-mid);
+  font-weight: 600;
+}
+
+.dose-correlation-table td {
+  padding: 0.6rem 0.9rem;
+  font-size: 0.82rem;
+  color: var(--white);
+  font-family: 'JetBrains Mono', monospace;
+  border-top: 1px solid var(--border);
+}
+
+.dose-correlation-suggestion {
+  margin-top: 0.7rem;
+  font-size: 0.8rem;
+  color: var(--green);
+  line-height: 1.5;
+}
+
+/* ============================================================
+   DOCTOR REPORT PDF
+   ============================================================ */
+.doctor-report-block {
+  margin-top: 1.5rem;
+}
+
+.doctor-report-btn {
+  background: transparent;
+  border: 1px solid var(--blue);
+  color: var(--blue);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: background 0.2s;
+}
+
+.doctor-report-btn:hover:not(:disabled) { background: rgba(59, 130, 246, 0.1); }
+.doctor-report-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.doctor-report-error {
+  font-size: 0.75rem;
+  color: var(--red);
+  margin-top: 0.5rem;
+  line-height: 1.4;
 }

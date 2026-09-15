@@ -7,6 +7,9 @@ import RiskGauge from './RiskGauge.jsx';
 import Timeline from './Timeline.jsx';
 import InterpretationBack from './InterpretationBack.jsx';
 import ComparisonTable from './ComparisonTable.jsx';
+import TrendPrediction from './TrendPrediction.jsx';
+import DoseCorrelationTable from './DoseCorrelationTable.jsx';
+import DoctorReportButton from './DoctorReportButton.jsx';
 import { ThyroidIcon, BrainIcon, MoleculeIcon, CalendarIcon } from './CardIllustrations.jsx';
 import { REFS, STATE_LABEL, getUrgencyColor, getRiskZone, ABSORPTION_RULES } from '../utils/diagnose.js';
 
@@ -48,7 +51,7 @@ function truncateWords(text, n) {
 
 const SYMPTOM_DOT_COLOR = { hypothyroid: 'var(--red)', borderline_hypo: 'var(--red)', hyperthyroid: 'var(--amber)', borderline_hyper: 'var(--amber)', optimal: 'var(--green)' };
 
-export default function ResultCards({ result, riskScore, onRiskScoreChange, automations, onNewResults, pulseTick }) {
+export default function ResultCards({ result, riskScore, onRiskScoreChange, automations, onNewResults, pulseTick, resultsHistory, reportInfo }) {
   // Entrance animations should only ever play once, right when the deck first
   // appears — not every time a card is opened and closed again.
   const [entranceDone, setEntranceDone] = useState(false);
@@ -126,6 +129,14 @@ export default function ResultCards({ result, riskScore, onRiskScoreChange, auto
           </div>
           <StatusBanner dxClass={result.banner.cssClass} icon={result.banner.icon} title={result.banner.title} desc={result.banner.desc} />
           <DoseCard guidance={result.doseGuidance} />
+          <TrendPrediction history={resultsHistory} />
+          <DoseCorrelationTable history={resultsHistory} />
+          <DoctorReportButton
+            name={reportInfo?.name}
+            patientId={reportInfo?.patientId}
+            status={reportInfo?.status}
+            dose={reportInfo?.dose}
+          />
         </>
       ),
     },
