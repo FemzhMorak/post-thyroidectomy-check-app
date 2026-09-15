@@ -1,3 +1,5 @@
+import { apiUrl } from './apiBase.js';
+
 // Converts a VAPID base64url public key into the Uint8Array shape the Push
 // API's applicationServerKey actually requires.
 function urlBase64ToUint8Array(base64String) {
@@ -18,7 +20,7 @@ export async function subscribeToNotifications() {
 
   try {
     const reg = await navigator.serviceWorker.ready;
-    const res = await fetch('/api/notifications/vapid-public-key');
+    const res = await fetch(apiUrl('/api/notifications/vapid-public-key'));
     const { publicKey } = await res.json();
     if (!publicKey) return { ok: false, reason: 'no-vapid-key' };
 
@@ -30,7 +32,7 @@ export async function subscribeToNotifications() {
       });
     }
 
-    await fetch('/api/notifications/subscribe', {
+    await fetch(apiUrl('/api/notifications/subscribe'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ subscription }),

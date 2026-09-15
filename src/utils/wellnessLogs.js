@@ -1,5 +1,7 @@
 // Local-only weekly wellness check-in log, mirrored to the backend
 // (best-effort) for the doctor report PDF's symptom trend page.
+import { apiUrl } from './apiBase.js';
+
 const KEY = 'thyrotrack_wellness_logs';
 
 function todayStr() {
@@ -38,7 +40,7 @@ export function logWellness(feeling) {
   const entry = { date: todayStr(), time: now.toTimeString().slice(0, 5), feeling };
   logs.push(entry);
   saveWellnessLogs(logs);
-  fetch('/api/wellness-logs', {
+  fetch(apiUrl('/api/wellness-logs'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(entry),

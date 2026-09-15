@@ -1,0 +1,35 @@
+# Render "Blueprint" deploy for the ThyroTrack backend (server/). In the
+# Render dashboard: New -> Blueprint -> point at this repo -> it reads this
+# file automatically. Doesn't touch the frontend (that deploys separately,
+# e.g. to Vercel, as a normal static Vite build).
+#
+# After the first deploy, set VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY (from
+# `npx web-push generate-vapid-keys`, run once locally) and CORS_ORIGIN
+# (your frontend's URL) in the Render dashboard's Environment tab — secrets
+# aren't stored in this file.
+services:
+  - type: web
+    name: thyrotrack-api
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm install
+    startCommand: node index.js
+    healthCheckPath: /api/health
+    disk:
+      name: thyrotrack-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: DB_PATH
+        value: /var/data/thyrotrack.db
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_CONTACT_EMAIL
+        value: morakinyofemii@gmail.com
+      - key: CORS_ORIGIN
+        sync: false

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiUrl } from '../utils/apiBase.js';
 
 export default function DoctorReportButton({ name, patientId, status, dose }) {
   const [loading, setLoading] = useState(false);
@@ -14,7 +15,7 @@ export default function DoctorReportButton({ name, patientId, status, dose }) {
         status: status || '',
         dose: dose || '',
       });
-      const res = await fetch(`/api/export/doctor-report?${params.toString()}`);
+      const res = await fetch(apiUrl(`/api/export/doctor-report?${params.toString()}`));
       if (!res.ok) throw new Error('export failed');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);

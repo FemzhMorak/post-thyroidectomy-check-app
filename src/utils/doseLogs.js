@@ -1,6 +1,8 @@
 // Local-only levothyroxine dose log (localStorage), mirrored to the backend
 // (best-effort, fire-and-forget) so server-side cron jobs and the doctor
 // report PDF can see it too.
+import { apiUrl } from './apiBase.js';
+
 const KEY = 'thyrotrack_dose_logs';
 
 function todayStr() {
@@ -25,7 +27,7 @@ function saveDoseLogs(logs) {
 }
 
 function syncToServer(entry) {
-  fetch('/api/dose-logs', {
+  fetch(apiUrl('/api/dose-logs'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(entry),

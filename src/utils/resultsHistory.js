@@ -2,6 +2,8 @@
 // the doctor report PDF. Distinct from history.js's single "last result"
 // (which only powers the same/worse/improved comparison banner) — this one
 // keeps everything, for the TSH trend prediction and dose-response table.
+import { apiUrl } from './apiBase.js';
+
 const KEY = 'thyrotrack_results_history';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -58,7 +60,7 @@ export function addResultToHistory(entry) {
   } catch {
     // Storage unavailable — history simply won't persist this session.
   }
-  fetch('/api/lab-results', {
+  fetch(apiUrl('/api/lab-results'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(entry),

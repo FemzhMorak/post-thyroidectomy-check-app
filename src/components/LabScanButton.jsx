@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { apiUrl } from '../utils/apiBase.js';
 
 export default function LabScanButton({ onExtracted }) {
   const inputRef = useRef(null);
@@ -15,7 +16,7 @@ export default function LabScanButton({ onExtracted }) {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch('/api/scan-lab-report', { method: 'POST', body: formData });
+      const res = await fetch(apiUrl('/api/scan-lab-report'), { method: 'POST', body: formData });
       if (!res.ok) throw new Error('scan failed');
       const result = await res.json();
       onExtracted?.(result);
