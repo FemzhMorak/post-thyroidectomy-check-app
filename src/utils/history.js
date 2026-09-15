@@ -13,9 +13,29 @@ export function getLastResult() {
   }
 }
 
-export function saveLastResult({ tsh, target, date }) {
+// Rough retest interval per diagnosis state, matching the timeline text
+// elsewhere in the app (6-8 weeks for hypo/hyper, 3-6 months borderline,
+// 6-12 months once optimal) — used for the desktop summary strip's
+// "next retest due" date.
+const RETEST_DAYS = {
+  hypothyroid: 56,
+  hyperthyroid: 56,
+  borderline_hypo: 90,
+  borderline_hyper: 90,
+  optimal: 180,
+};
+
+function computeRetestDate(dateStr, dx) {
+  const days = RETEST_DAYS[dx] || 90;
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+export function saveLastResult({ tsh, target, date, dx, dose }) {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ tsh, target, date }));
+    const retestDate = dx ? computeRetestDate(date, dx) : null;
+    localStorage.setItem(KEY, JSON.stringify({ tsh, target, date, dx, dose, retestDate }));
   } catch {
     // Storage unavailable (private browsing, quota) — automations simply won't fire.
   }

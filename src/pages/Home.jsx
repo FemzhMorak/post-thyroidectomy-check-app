@@ -1,7 +1,12 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ResultCards from '../components/ResultCards.jsx';
 import MiniRiskGauge from '../components/MiniRiskGauge.jsx';
 import UnitToggle from '../components/UnitToggle.jsx';
+import SummaryStrip from '../components/SummaryStrip.jsx';
+import MedicationSheet from '../components/MedicationSheet.jsx';
+import WellnessSheet from '../components/WellnessSheet.jsx';
+import { getStreak } from '../utils/doseLogs.js';
+import { scheduleAllNotifications } from '../utils/notifications.js';
 import {
   TSH_TARGETS,
   SYMPTOM_OPTIONS,
@@ -25,10 +30,20 @@ import { compareToLast, saveLastResult } from '../utils/history.js';
 import { UNIT_FIELDS, refRowText, buildComparisonRows, formatNum } from '../utils/units.js';
 
 const NO_SYMPTOM_VALUES = new Set(['', 'No prominent symptoms']);
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function formatHeaderDate(d) {
+  return `${WEEKDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
 
 const TOTAL_MS = 3000;
 
-export default function Home({ onDxChange }) {
+export default function Home({ onDxChange, profile }) {
   const [form, setForm] = useState({
     tsh: '9.9646',
     tshUnit: 'mIU/L',
@@ -62,6 +77,28 @@ export default function Home({ onDxChange }) {
   const [runId, setRunId] = useState(0);
   const [pulseTick, setPulseTick] = useState(0);
   const timersRef = useRef([]);
+
+  const [medSheetOpen, setMedSheetOpen] = useState(false);
+  const [wellnessSheetOpen, setWellnessSheetOpen] = useState(false);
+  const [doseVersion, setDoseVersion] = useState(0);
+  const [today, setToday] = useState(() => new Date());
+
+  useEffect(() => {
+    const t = setInterval(() => setToday(new Date()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Notification scheduling only starts once a profile exists (permission is
+  // requested during onboarding), and only while this tab stays open — this
+  // app has no backend or service worker to deliver background pushes.
+  useEffect(() => {
+    if (!profile) return undefined;
+    return scheduleAllNotifications({
+      onOpenMedication: () => setMedSheetOpen(true),
+      onOpenWellness: () => setWellnessSheetOpen(true),
+      onOpenAnalyze: () => document.querySelector('.input-card')?.scrollIntoView({ behavior: 'smooth' }),
+    });
+  }, [profile]);
 
   function update(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -119,7 +156,7 @@ export default function Home({ onDxChange }) {
     const score = calculateRisk(tsh, ft4, ft3, age ?? 30, form.status, resolvedSymptom);
 
     const comparison = compareToLast(tsh, target);
-    saveLastResult({ tsh, target, date: new Date().toISOString().slice(0, 10) });
+    saveLastResult({ tsh, target, date: new Date().toISOString().slice(0, 10), dx, dose });
 
     // Always derived fresh from whatever was actually entered this run —
     // no preset or cached assumptions about what the result "should" be.
@@ -183,18 +220,37 @@ export default function Home({ onDxChange }) {
   }
 
   const gaugeState = analyzing ? 'analyzing' : result ? 'done' : 'idle';
+  const streak = getStreak();
+  const headerDate = formatHeaderDate(today);
 
   return (
     <>
       <header>
         <div className="logo">
           <div className="logo-icon">{'\u{1FAC0}'}</div>
-          <div className="logo-text">Thyro<span>Track</span></div>
+          <div className="logo-text">
+            Thyro<span>Track</span>
+            {profile?.name && <span className="header-profile-name">{` · ${capitalize(profile.name)}`}</span>}
+          </div>
         </div>
-        <div className="header-badge">Thyroid Health Monitor</div>
+        <div className="header-right">
+          {streak >= 2 && (
+            <span className="header-streak" title="Medication streak — keep taking your dose at the same time daily">
+              {`\u{1F525} ${streak} days`}
+            </span>
+          )}
+          <span className="header-date">{headerDate}</span>
+          <button type="button" className="med-pill-btn" onClick={() => setMedSheetOpen(true)} aria-label="Medication log">
+            {'\u{1F48A}'}
+          </button>
+          <div className="header-badge">Thyroid Health Monitor</div>
+        </div>
       </header>
+      <div className="mobile-date-strip">{headerDate}</div>
 
       <main>
+        <div className="app-columns">
+        <div className="col-form">
         <div className="input-card">
           <svg className="form-watermark" viewBox="0 0 120 200" aria-hidden="true" focusable="false">
             <defs>
@@ -224,12 +280,21 @@ export default function Home({ onDxChange }) {
           </svg>
 
           <div className="input-card-header">
-            <div>
-              <div className="section-label">Lab Results Entry</div>
-              <div className="section-title">Enter your thyroid panel</div>
-              <div className="section-sub">Input your most recent blood test values. All analysis is done locally — your data stays with you.</div>
-            </div>
+            <div className="ih-label section-label">Lab Results Entry</div>
+            <div className="ih-title section-title">Enter your thyroid panel</div>
+            <div className="ih-subtext section-sub">Input your most recent blood test values. All analysis is done locally — your data stays with you.</div>
             <MiniRiskGauge state={gaugeState} score={riskScore} fromScore={fromScore} triggerId={runId} />
+          </div>
+
+          <div className="mobile-card-strip">
+            <ResultCards
+              variant="mobile"
+              result={result}
+              riskScore={riskScore}
+              onRiskScoreChange={setRiskScore}
+              automations={automations}
+              pulseTick={pulseTick}
+            />
           </div>
 
           <div className="form-grid">
@@ -371,16 +436,30 @@ export default function Home({ onDxChange }) {
             {analyzing ? 'Analysing...' : 'Analyze my results'}
           </button>
         </div>
+        </div>
 
-        <ResultCards
-          result={result}
-          riskScore={riskScore}
-          onRiskScoreChange={setRiskScore}
-          automations={automations}
-          onNewResults={handleNewResults}
-          pulseTick={pulseTick}
-        />
+        <div className="col-results">
+          <ResultCards
+            variant="desktop"
+            result={result}
+            riskScore={riskScore}
+            onRiskScoreChange={setRiskScore}
+            automations={automations}
+            onNewResults={handleNewResults}
+            pulseTick={pulseTick}
+          />
+          <SummaryStrip version={runId} />
+        </div>
+        </div>
       </main>
+
+      <MedicationSheet
+        open={medSheetOpen}
+        onClose={() => setMedSheetOpen(false)}
+        dose={form.dose}
+        onLogged={() => setDoseVersion((v) => v + 1)}
+      />
+      <WellnessSheet open={wellnessSheetOpen} onClose={() => setWellnessSheetOpen(false)} />
     </>
   );
 }

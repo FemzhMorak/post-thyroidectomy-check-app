@@ -38,6 +38,8 @@ export default function FlipCard({
   onOpenChange,
   blank,
   pulse,
+  compact,
+  mobileStat,
 }) {
   const [phase, setPhase] = useState(CLOSED);
   const [backVisible, setBackVisible] = useState(false);
@@ -94,6 +96,7 @@ export default function FlipCard({
     pulseWorse ? 'pulse-worse' : '',
     pulse ? 'pulse-refresh' : '',
     blank ? 'blank' : '',
+    compact ? 'compact' : '',
     isOpenTransition ? 'is-open' : '',
     isFullscreen ? 'fullscreen' : '',
     `phase-${phase}`,
@@ -117,33 +120,45 @@ export default function FlipCard({
       {improvingTag && phase === CLOSED && <div className="improving-tag">{'↓ Improving'}</div>}
       <div className="card-flip-inner">
         <div className="card-face card-face-front">
-          {!blank && (
-            <div className="card-fill-wrap" aria-hidden="true">
-              <div className="card-fill" />
-            </div>
-          )}
-          {illustration && <div className="card-illustration">{illustration}</div>}
-          <div className="card-front-content">
-            <div className="card-top-row">
-              <span className="card-icon">{icon}</span>
-              <span className="card-title">{title}</span>
-            </div>
-            {blank ? (
-              <div className="card-summary-blank">Results will appear here after analysis</div>
-            ) : (
-              <div className="card-front-body">
-                {frontBody.map((node, i) => (
-                  <div
-                    key={i}
-                    className="card-reveal-line"
-                    style={{ animationDelay: `${fillDelay + revealDelay(i, frontBody.length)}ms` }}
-                  >
-                    {node}
-                  </div>
-                ))}
+          {compact ? (
+            <div className="mcard-front">
+              <div className="mcard-top">
+                <span className="mcard-icon">{icon}</span>
+                <span className="mcard-name">{title}</span>
               </div>
-            )}
-          </div>
+              <div className="mcard-stat">{blank ? '—' : mobileStat}</div>
+            </div>
+          ) : (
+            <>
+              {!blank && (
+                <div className="card-fill-wrap" aria-hidden="true">
+                  <div className="card-fill" />
+                </div>
+              )}
+              {illustration && <div className="card-illustration">{illustration}</div>}
+              <div className="card-front-content">
+                <div className="card-top-row">
+                  <span className="card-icon">{icon}</span>
+                  <span className="card-title">{title}</span>
+                </div>
+                {blank ? (
+                  <div className="card-summary-blank">Results will appear here after analysis</div>
+                ) : (
+                  <div className="card-front-body">
+                    {frontBody.map((node, i) => (
+                      <div
+                        key={i}
+                        className="card-reveal-line"
+                        style={{ animationDelay: `${fillDelay + revealDelay(i, frontBody.length)}ms` }}
+                      >
+                        {node}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
         <div className="card-face card-face-back">
           <div className={`card-back-content${backVisible ? ' visible' : ''}`}>

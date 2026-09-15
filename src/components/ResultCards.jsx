@@ -48,7 +48,10 @@ function truncateWords(text, n) {
 
 const SYMPTOM_DOT_COLOR = { hypothyroid: 'var(--red)', borderline_hypo: 'var(--red)', hyperthyroid: 'var(--amber)', borderline_hyper: 'var(--amber)', optimal: 'var(--green)' };
 
-export default function ResultCards({ result, riskScore, onRiskScoreChange, automations, onNewResults, pulseTick }) {
+export default function ResultCards({ result, riskScore, onRiskScoreChange, automations, onNewResults, pulseTick, variant = 'desktop' }) {
+  const compact = variant === 'mobile';
+  const deckClassName = compact ? 'card-deck card-deck-mobile' : 'card-deck';
+
   // Entrance animations should only ever play once, right when the deck first
   // appears — not every time a card is opened and closed again.
   const [entranceDone, setEntranceDone] = useState(false);
@@ -69,23 +72,22 @@ export default function ResultCards({ result, riskScore, onRiskScoreChange, auto
 
   if (!result) {
     return (
-      <div>
-        <div className="card-deck">
-          {BLANK_CARDS.map((card, slot) => (
-            <FlipCard
-              key={card.id}
-              slot={slot}
-              stagger={slot}
-              entering={!entranceDone}
-              borderColor="var(--border)"
-              glowColor={BLANK_GLOW}
-              icon={card.icon}
-              title={card.title}
-              illustration={card.illustration}
-              blank
-            />
-          ))}
-        </div>
+      <div className={deckClassName}>
+        {BLANK_CARDS.map((card, slot) => (
+          <FlipCard
+            key={card.id}
+            slot={slot}
+            stagger={slot}
+            entering={!entranceDone}
+            borderColor="var(--border)"
+            glowColor={BLANK_GLOW}
+            icon={card.icon}
+            title={card.title}
+            illustration={card.illustration}
+            compact={compact}
+            blank
+          />
+        ))}
       </div>
     );
   }
@@ -104,6 +106,7 @@ export default function ResultCards({ result, riskScore, onRiskScoreChange, auto
       icon: overviewIcon,
       title: 'Overview',
       illustration: <ThyroidIcon />,
+      mobileStat: <span style={{ color: riskColor }}>{`${result.tsh} ${STATE_LABEL[result.dx]}`}</span>,
       body: [
         <div className="card-summary-line">{`TSH ${result.tsh} · ${STATE_LABEL[result.dx]}`}</div>,
         <span className="card-badge" style={{ color: riskColor, borderColor: riskColor }}>{`Risk ${riskScore}`}</span>,
@@ -134,6 +137,7 @@ export default function ResultCards({ result, riskScore, onRiskScoreChange, auto
       icon: '\u{1F9E0}',
       title: 'What this means',
       illustration: <BrainIcon />,
+      mobileStat: truncateWords(plainInterpretation, 3),
       body: [
         <div className="card-summary-line">{truncateWords(plainInterpretation, 8)}</div>,
         <div className="card-tap-hint">{'Tap to open →'}</div>,
@@ -159,6 +163,7 @@ export default function ResultCards({ result, riskScore, onRiskScoreChange, auto
       icon: '\u{1F48A}',
       title: 'Supplements & Food',
       illustration: <MoleculeIcon />,
+      mobileStat: `${result.supplements.cards.length} supps`,
       body: [
         <div className="card-summary-line">{`${result.supplements.cards.length} supplements recommended`}</div>,
         <div className="card-preview-line">{topSupplementName}</div>,
@@ -210,6 +215,7 @@ export default function ResultCards({ result, riskScore, onRiskScoreChange, auto
       icon: actionIcon,
       title: 'Action Plan',
       illustration: <CalendarIcon />,
+      mobileStat: <span style={{ color: urgencyColor }}>{URGENCY_LABEL[result.dx]}</span>,
       body: [
         <div className="card-summary-line">{truncateWords(result.timeline[0].what, 10)}</div>,
         <span className="card-badge" style={{ color: urgencyColor, borderColor: urgencyColor }}>{URGENCY_LABEL[result.dx]}</span>,
@@ -249,6 +255,34 @@ export default function ResultCards({ result, riskScore, onRiskScoreChange, auto
     order = [cardDefs.action, cardDefs.interpretation, cardDefs.supplements, cardDefs.overview];
   }
 
+  const deck = (
+    <div className={deckClassName}>
+      {order.map((card, slot) => (
+        <FlipCard
+          key={card.id}
+          slot={slot}
+          stagger={slot}
+          entering={!entranceDone}
+          borderColor={card.borderColor}
+          glowColor={card.glowColor}
+          icon={card.icon}
+          title={card.title}
+          frontBody={card.body}
+          mobileStat={card.mobileStat}
+          illustration={card.illustration}
+          fillColor={fillColor}
+          pulseWorse={card.pulseWorse}
+          improvingTag={card.improvingTag}
+          renderBack={card.renderBack}
+          pulse={pulsing}
+          compact={compact}
+        />
+      ))}
+    </div>
+  );
+
+  if (compact) return deck;
+
   return (
     <div>
       <div className="new-results-bar">
@@ -261,27 +295,7 @@ export default function ResultCards({ result, riskScore, onRiskScoreChange, auto
         </div>
       )}
 
-      <div className="card-deck">
-        {order.map((card, slot) => (
-          <FlipCard
-            key={card.id}
-            slot={slot}
-            stagger={slot}
-            entering={!entranceDone}
-            borderColor={card.borderColor}
-            glowColor={card.glowColor}
-            icon={card.icon}
-            title={card.title}
-            frontBody={card.body}
-            illustration={card.illustration}
-            fillColor={fillColor}
-            pulseWorse={card.pulseWorse}
-            improvingTag={card.improvingTag}
-            renderBack={card.renderBack}
-            pulse={pulsing}
-          />
-        ))}
-      </div>
+      {deck}
     </div>
   );
 }
