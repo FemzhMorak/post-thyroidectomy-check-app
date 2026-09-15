@@ -96,6 +96,19 @@ main {
   border-radius: 16px;
   padding: 2rem;
   margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.form-watermark {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 110px;
+  height: 200px;
+  opacity: 0.03;
+  pointer-events: none;
 }
 
 .section-label {
@@ -214,6 +227,24 @@ main {
 
 .btn-analyze:hover { background: #2563EB; }
 .btn-analyze:active { transform: scale(0.99); }
+
+.btn-analyze.analyzing {
+  background: linear-gradient(90deg, #F59E0B, #10B981);
+  background-size: 220% 100%;
+  animation: btnGradientSweep 3s linear forwards, btnPulseLoop 600ms ease-in-out infinite;
+}
+
+.btn-analyze.analyzing:hover { background-size: 220% 100%; }
+
+@keyframes btnGradientSweep {
+  from { background-position: 0% 0; }
+  to { background-position: 100% 0; }
+}
+
+@keyframes btnPulseLoop {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
 
 /* STATUS BANNER */
 .status-banner {
@@ -957,6 +988,16 @@ header, main {
   100% { transform: scale(1); }
 }
 
+.particle-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
+
 .mesh-grid-overlay {
   position: fixed;
   inset: 0;
@@ -1118,103 +1159,57 @@ header, main {
 }
 
 .card-deck {
-  position: relative;
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
   width: 100%;
-  max-width: 560px;
-  height: 420px;
   margin: 0 auto 2rem;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .card-deck {
-    height: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 0.5rem;
   }
 }
 
 .result-card {
-  position: absolute;
-  width: 240px;
-  height: 180px;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 210px;
   background: var(--surface);
   border-radius: 16px;
   cursor: pointer;
   transform-style: preserve-3d;
-  transition: transform 250ms cubic-bezier(0.2, 0, 0, 1), box-shadow 250ms cubic-bezier(0.2, 0, 0, 1);
+  transition: transform 200ms cubic-bezier(0.2, 0, 0, 1), box-shadow 200ms cubic-bezier(0.2, 0, 0, 1), filter 200ms ease;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .result-card {
-    position: relative;
-    width: 100%;
-    height: auto;
-    min-height: 150px;
-    margin-bottom: -20px;
-  }
-
-  /* On mobile the card isn't flipped-open in place (it still goes fullscreen),
-     so the front face can flow normally instead of being absolutely
-     positioned — otherwise its content wouldn't contribute to the card's
-     "auto" height and would get clipped by .card-face's overflow: hidden. */
-  .result-card:not(.fullscreen) .card-face-front {
-    position: relative;
-    overflow: visible;
+    flex: 0 0 200px;
+    min-width: 200px;
   }
 }
 
 .result-card:hover:not(.is-open) {
-  transform: rotate(0deg) translate(0, -8px) !important;
+  transform: translateY(-8px) !important;
   box-shadow: 0 24px 48px rgba(0,0,0,0.65) !important;
   z-index: 10 !important;
 }
 
-.result-card.slot-0 {
-  top: 20px; left: 20px;
-  transform: rotate(-3deg) translate(-8px, 12px);
-  z-index: 2;
-}
-.result-card.slot-1 {
-  top: 10px; right: 20px;
-  transform: rotate(2deg) translate(10px, -6px);
-  z-index: 4;
-}
-.result-card.slot-2 {
-  bottom: 20px; left: 30px;
-  transform: rotate(-1.5deg) translate(-12px, -10px);
-  z-index: 1;
-}
-.result-card.slot-3 {
-  bottom: 10px; right: 10px;
-  transform: rotate(3.5deg) translate(8px, 14px);
-  z-index: 3;
+.result-card.entering {
+  animation: cardRowEnter 400ms ease-out backwards;
 }
 
-@media (max-width: 480px) {
-  .result-card.slot-0 { top: auto; left: auto; right: auto; bottom: auto; transform: rotate(-2deg) translateX(-8px); }
-  .result-card.slot-1 { top: auto; left: auto; right: auto; bottom: auto; transform: rotate(2deg) translateX(8px); }
-  .result-card.slot-2 { top: auto; left: auto; right: auto; bottom: auto; transform: rotate(-1.5deg) translateX(-6px); }
-  .result-card.slot-3 { top: auto; left: auto; right: auto; bottom: auto; transform: rotate(3deg) translateX(10px); }
-  .result-card:hover:not(.is-open) { transform: none !important; box-shadow: inherit !important; }
-}
+.card-deck .result-card:nth-child(2).entering { animation-delay: 60ms; }
+.card-deck .result-card:nth-child(3).entering { animation-delay: 120ms; }
+.card-deck .result-card:nth-child(4).entering { animation-delay: 180ms; }
 
-.result-card.entering.slot-0 { animation: enterBottomLeft 400ms ease-out; }
-.result-card.entering.slot-1 { animation: enterTopRight 400ms ease-out; }
-.result-card.entering.slot-2 { animation: enterTopLeft 400ms ease-out; }
-.result-card.entering.slot-3 { animation: enterBottomRight 400ms ease-out; }
-
-@keyframes enterBottomLeft {
-  from { opacity: 0; transform: rotate(-3deg) translate(-48px, 52px); }
-}
-@keyframes enterTopRight {
-  from { opacity: 0; transform: rotate(2deg) translate(50px, -46px); }
-}
-@keyframes enterTopLeft {
-  from { opacity: 0; transform: rotate(-1.5deg) translate(-52px, -50px); }
-}
-@keyframes enterBottomRight {
-  from { opacity: 0; transform: rotate(3.5deg) translate(48px, 54px); }
+@keyframes cardRowEnter {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .result-card.pulse-worse {
@@ -1253,7 +1248,19 @@ header, main {
 }
 
 .card-face-front {
-  background: var(--surface);
+  background: rgba(15, 31, 56, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.card-face-front::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 .card-top-row {
@@ -1273,16 +1280,157 @@ header, main {
   color: var(--white);
 }
 
-.card-summary {
+.card-front-content {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.card-front-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.card-summary-line {
   font-size: 0.78rem;
   color: var(--dim);
   line-height: 1.4;
-  margin-top: 0.6rem;
+}
+
+.card-preview-line {
+  font-size: 0.78rem;
+  color: var(--white);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.card-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 0.66rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 2px 9px;
+  border-radius: 20px;
+  border: 1px solid currentColor;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .card-tap-hint {
   font-size: 0.68rem;
   color: var(--muted);
+}
+
+.card-reveal-line {
+  opacity: 0;
+  animation: cardRevealIn 400ms ease forwards;
+}
+
+@keyframes cardRevealIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Illustration — decorative, low-opacity, bottom-right of the card */
+.card-illustration {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 80px;
+  height: 80px;
+  color: white;
+  opacity: 0.06;
+  pointer-events: none;
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+
+.result-card:hover .card-illustration {
+  opacity: 0.1;
+  transform: scale(1.1);
+}
+
+/* Skeleton shimmer for blank/pre-analysis cards */
+.result-card.blank {
+  cursor: default;
+  overflow: hidden;
+}
+
+.result-card.blank::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.06) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: shimmerSweep 1.5s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmerSweep {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+
+.result-card.blank:hover {
+  transform: none !important;
+  box-shadow: inherit !important;
+}
+
+/* Rising liquid fill — triggers once per card on first population */
+.card-fill-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.card-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0%;
+  background: var(--fill-color, rgba(59, 130, 246, 0.08));
+  animation: cardFillRise 1.2s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  animation-delay: var(--fill-delay, 0ms);
+}
+
+.card-fill::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: -10%;
+  right: -10%;
+  height: 14px;
+  background: inherit;
+  border-radius: 50%;
+  animation: cardWaveOscillate 0.6s ease-in-out 2;
+  animation-delay: var(--fill-delay, 0ms);
+}
+
+@keyframes cardFillRise {
+  from { height: 0%; }
+  to { height: 100%; }
+}
+
+@keyframes cardWaveOscillate {
+  0%, 100% { transform: translateY(0) scaleX(1); }
+  50% { transform: translateY(-3px) scaleX(1.03); }
+}
+
+.result-card:not(.blank) {
+  animation: cardGlowIn 400ms ease forwards;
+  animation-delay: calc(var(--fill-delay, 0ms) + 1200ms);
+}
+
+@keyframes cardGlowIn {
+  from { filter: drop-shadow(0 0 0 transparent); }
+  to { filter: drop-shadow(0 0 10px var(--fill-color, transparent)); }
 }
 
 /* CARD FLIP TO FULL SCREEN */
@@ -1441,4 +1589,289 @@ header, main {
   padding: 1rem;
   margin-bottom: 0.8rem;
   position: relative;
+}
+
+/* ============================================================
+   INPUT CARD HEADER + INLINE RISK GAUGE
+   ============================================================ */
+.input-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.4rem;
+}
+
+@media (max-width: 600px) {
+  .input-card-header { flex-direction: column; align-items: stretch; }
+}
+
+.mini-risk-gauge {
+  position: relative;
+  width: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.mini-risk-gauge-svg {
+  width: 80px;
+  height: 44px;
+  display: block;
+}
+
+.mini-risk-gauge-readout {
+  margin-top: -6px;
+  text-align: center;
+}
+
+.mini-risk-gauge-score {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 1.7rem;
+  line-height: 1;
+  transition: color 200ms linear;
+}
+
+.mini-risk-gauge-zone {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+  transition: color 200ms linear;
+}
+
+.mini-risk-gauge-desc {
+  font-size: 0.7rem;
+  color: var(--dim);
+  text-align: center;
+  max-width: 120px;
+  margin: 4px auto 0;
+  line-height: 1.35;
+}
+
+/* ============================================================
+   UNIT TOGGLE
+   ============================================================ */
+.unit-toggle-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--navy-light);
+  color: var(--blue);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 0.64rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.unit-toggle-btn:hover { border-color: var(--blue); background: var(--blue-dim); }
+.unit-toggle-btn:active { transform: translateY(-50%) scale(0.95); }
+
+.field input.unit-flash {
+  transition: color 0.2s ease, border-color 0.2s ease;
+  color: var(--blue);
+  border-color: var(--blue);
+}
+
+/* ============================================================
+   OPTIONAL MARKERS
+   ============================================================ */
+.more-markers-toggle {
+  display: block;
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--dim);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  margin-bottom: 1.2rem;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.more-markers-toggle:hover { border-color: var(--blue); color: var(--white); }
+
+.optional-markers-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--border);
+}
+
+@media (max-width: 700px) {
+  .optional-markers-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 480px) {
+  .optional-markers-grid { grid-template-columns: 1fr; }
+}
+
+.optional-badge {
+  font-size: 0.58rem;
+  color: var(--muted);
+  background: var(--navy-mid);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+}
+
+.field-note {
+  font-size: 0.66rem;
+  color: var(--muted);
+  font-style: italic;
+  line-height: 1.3;
+}
+
+/* ============================================================
+   INLINE ANALYSIS STATUS LINE (replaces full-screen loader)
+   ============================================================ */
+.btn-analyze:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.inline-status-line {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  color: var(--blue);
+  text-align: center;
+  margin-top: 0.8rem;
+  animation: inlineStatusFade 500ms ease-in-out;
+}
+
+@keyframes inlineStatusFade {
+  0% { opacity: 0; }
+  50% { opacity: 0.85; }
+  100% { opacity: 0.85; }
+}
+
+/* ============================================================
+   BLANK / PLACEHOLDER CARDS
+   (base .result-card.blank rules live with the card-row layout above,
+   alongside the skeleton shimmer)
+   ============================================================ */
+.card-summary-blank {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-style: italic;
+  line-height: 1.4;
+  margin-top: 0.6rem;
+}
+
+.result-card.pulse-refresh {
+  animation: cardPulseFlash 450ms ease;
+}
+
+@keyframes cardPulseFlash {
+  0% { opacity: 1; }
+  40% { opacity: 0.35; }
+  100% { opacity: 1; }
+}
+
+/* ============================================================
+   SIDE-BY-SIDE COMPARISON TABLE
+   ============================================================ */
+.comparison-table-wrap {
+  background: #0F1F38;
+  border: 1px solid #1E3A5F;
+  border-radius: 12px;
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+}
+
+.comparison-table {
+  width: 100%;
+  min-width: 460px;
+  border-collapse: collapse;
+}
+
+.comparison-table thead tr {
+  background: #112240;
+}
+
+.comparison-table th {
+  text-align: left;
+  padding: 0.75rem;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--dim);
+  font-weight: 600;
+}
+
+.comparison-table td {
+  padding: 0.75rem;
+  font-size: 0.82rem;
+  vertical-align: top;
+  border-top: 1px solid var(--border);
+}
+
+.comparison-table tbody tr:nth-child(odd) { background: #0F1F38; }
+.comparison-table tbody tr:nth-child(even) { background: #0a1628; }
+
+.ct-marker {
+  color: var(--white);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ct-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  color: var(--white);
+}
+
+.ct-your-result.ct-high { background: rgba(239,68,68,0.08); }
+.ct-your-result.ct-low { background: rgba(245,158,11,0.08); }
+.ct-your-result.ct-normal { background: rgba(16,185,129,0.08); }
+
+.ct-arrow {
+  margin-left: 5px;
+  font-weight: 700;
+}
+
+.ct-arrow.up { color: var(--red); }
+.ct-arrow.down { color: var(--amber); }
+.ct-arrow.ok { color: var(--green); }
+
+.ct-unit {
+  display: block;
+  font-size: 0.66rem;
+  color: var(--muted);
+  margin-top: 2px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.ct-lab-ref .ct-range {
+  font-size: 0.8rem;
+  color: var(--dim);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.ct-optimal .ct-range {
+  color: var(--green);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+}
+
+.comparison-source-note {
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-style: italic;
+  padding: 0 0.75rem 0.75rem;
 }

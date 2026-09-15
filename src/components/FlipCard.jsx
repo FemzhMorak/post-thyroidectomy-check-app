@@ -11,6 +11,16 @@ const CLOSING2 = 'closing2';
 const FULLSCREEN_PHASES = new Set([FLIP2, OPEN, CLOSING1]);
 const OPEN_TRANSITION_PHASES = new Set([SCALE, FLIP1, FLIP2, OPEN, CLOSING1, CLOSING2]);
 
+const FILL_DURATION = 1200;
+const STAGGER_STEP = 200;
+
+// Content nearest the bottom of the card is "reached" by the rising fill
+// soonest, so it gets the shortest delay; content near the top waits longest.
+function revealDelay(i, total) {
+  const frac = 1 - (i + 1) / (total + 1);
+  return Math.round(frac * FILL_DURATION);
+}
+
 export default function FlipCard({
   slot,
   entering,
@@ -18,11 +28,16 @@ export default function FlipCard({
   glowColor,
   icon,
   title,
-  summary,
+  frontBody,
+  illustration,
+  fillColor,
+  stagger,
   pulseWorse,
   improvingTag,
   renderBack,
   onOpenChange,
+  blank,
+  pulse,
 }) {
   const [phase, setPhase] = useState(CLOSED);
   const [backVisible, setBackVisible] = useState(false);
@@ -34,6 +49,7 @@ export default function FlipCard({
   }
 
   function open() {
+    if (blank) return;
     if (phase !== CLOSED) return;
     onOpenChange?.(true);
     setPhase(SCALE);
@@ -76,6 +92,8 @@ export default function FlipCard({
     `slot-${slot}`,
     entering && phase === CLOSED ? 'entering' : '',
     pulseWorse ? 'pulse-worse' : '',
+    pulse ? 'pulse-refresh' : '',
+    blank ? 'blank' : '',
     isOpenTransition ? 'is-open' : '',
     isFullscreen ? 'fullscreen' : '',
     `phase-${phase}`,
@@ -83,25 +101,49 @@ export default function FlipCard({
     .filter(Boolean)
     .join(' ');
 
+  const fillDelay = (stagger || 0) * STAGGER_STEP;
+
   const style =
     phase === CLOSED
       ? {
           border: `1px solid ${borderColor}`,
           boxShadow: `${glowColor.shadow}, 0 0 16px ${glowColor.glow}`,
+          ...(fillColor ? { '--fill-color': fillColor, '--fill-delay': `${fillDelay}ms` } : {}),
         }
       : undefined;
 
   return (
-    <div className={classNames} style={style} onClick={phase === CLOSED ? open : undefined}>
+    <div className={classNames} style={style} onClick={phase === CLOSED && !blank ? open : undefined}>
       {improvingTag && phase === CLOSED && <div className="improving-tag">{'↓ Improving'}</div>}
       <div className="card-flip-inner">
         <div className="card-face card-face-front">
-          <div className="card-top-row">
-            <span className="card-icon">{icon}</span>
-            <span className="card-title">{title}</span>
+          {!blank && (
+            <div className="card-fill-wrap" aria-hidden="true">
+              <div className="card-fill" />
+            </div>
+          )}
+          {illustration && <div className="card-illustration">{illustration}</div>}
+          <div className="card-front-content">
+            <div className="card-top-row">
+              <span className="card-icon">{icon}</span>
+              <span className="card-title">{title}</span>
+            </div>
+            {blank ? (
+              <div className="card-summary-blank">Results will appear here after analysis</div>
+            ) : (
+              <div className="card-front-body">
+                {frontBody.map((node, i) => (
+                  <div
+                    key={i}
+                    className="card-reveal-line"
+                    style={{ animationDelay: `${fillDelay + revealDelay(i, frontBody.length)}ms` }}
+                  >
+                    {node}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="card-summary">{summary}</div>
-          <div className="card-tap-hint">{'Tap to open →'}</div>
         </div>
         <div className="card-face card-face-back">
           <div className={`card-back-content${backVisible ? ' visible' : ''}`}>

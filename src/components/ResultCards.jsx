@@ -6,7 +6,35 @@ import DoseCard from './DoseCard.jsx';
 import RiskGauge from './RiskGauge.jsx';
 import Timeline from './Timeline.jsx';
 import InterpretationBack from './InterpretationBack.jsx';
+import ComparisonTable from './ComparisonTable.jsx';
+import { ThyroidIcon, BrainIcon, MoleculeIcon, CalendarIcon } from './CardIllustrations.jsx';
 import { REFS, STATE_LABEL, getUrgencyColor, getRiskZone, ABSORPTION_RULES } from '../utils/diagnose.js';
+
+const BLANK_CARDS = [
+  { id: 'overview', icon: '\u{1F7E1}', title: 'Overview', illustration: <ThyroidIcon /> },
+  { id: 'interpretation', icon: '\u{1F9E0}', title: 'What this means', illustration: <BrainIcon /> },
+  { id: 'supplements', icon: '\u{1F48A}', title: 'Supplements & Food', illustration: <MoleculeIcon /> },
+  { id: 'action', icon: '\u{1F4CB}', title: 'Action Plan', illustration: <CalendarIcon /> },
+];
+const BLANK_GLOW = { shadow: '6px 8px 24px rgba(0,0,0,0.5)', glow: 'rgba(59,130,246,0.06)' };
+
+// Rising-fill color per diagnosis state (also drives the background particle
+// network's color shift, kept in sync via the same 4-state mapping).
+const FILL_COLOR = {
+  hypothyroid: 'rgba(239, 68, 68, 0.08)',
+  borderline_hypo: 'rgba(245, 158, 11, 0.08)',
+  borderline_hyper: 'rgba(245, 158, 11, 0.08)',
+  hyperthyroid: 'rgba(245, 158, 11, 0.08)',
+  optimal: 'rgba(16, 185, 129, 0.08)',
+};
+
+const URGENCY_LABEL = {
+  hypothyroid: 'High Priority',
+  hyperthyroid: 'High Priority',
+  borderline_hypo: 'Monitor',
+  borderline_hyper: 'Monitor',
+  optimal: 'Routine',
+};
 
 function stripHtml(html) {
   return html.replace(/<[^>]+>/g, '');
@@ -20,7 +48,7 @@ function truncateWords(text, n) {
 
 const SYMPTOM_DOT_COLOR = { hypothyroid: 'var(--red)', borderline_hypo: 'var(--red)', hyperthyroid: 'var(--amber)', borderline_hyper: 'var(--amber)', optimal: 'var(--green)' };
 
-export default function ResultCards({ result, riskScore, onRiskScoreChange, automations, onNewResults }) {
+export default function ResultCards({ result, riskScore, onRiskScoreChange, automations, onNewResults, pulseTick }) {
   // Entrance animations should only ever play once, right when the deck first
   // appears — not every time a card is opened and closed again.
   const [entranceDone, setEntranceDone] = useState(false);
@@ -29,24 +57,65 @@ export default function ResultCards({ result, riskScore, onRiskScoreChange, auto
     return () => clearTimeout(t);
   }, []);
 
+  // Re-analyze flash: briefly apply a pulse class to every card whenever
+  // pulseTick increments (existing already-populated results, not first fill).
+  const [pulsing, setPulsing] = useState(false);
+  useEffect(() => {
+    if (!pulseTick) return;
+    setPulsing(true);
+    const t = setTimeout(() => setPulsing(false), 450);
+    return () => clearTimeout(t);
+  }, [pulseTick]);
+
+  if (!result) {
+    return (
+      <div>
+        <div className="card-deck">
+          {BLANK_CARDS.map((card, slot) => (
+            <FlipCard
+              key={card.id}
+              slot={slot}
+              stagger={slot}
+              entering={!entranceDone}
+              borderColor="var(--border)"
+              glowColor={BLANK_GLOW}
+              icon={card.icon}
+              title={card.title}
+              illustration={card.illustration}
+              blank
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   const plainInterpretation = stripHtml(result.interpretation);
   const overviewIcon = riskScore > 60 ? '\u{1F534}' : riskScore > 20 ? '\u{1F7E1}' : '\u{1F7E2}';
   const actionIcon = riskScore > 60 ? '\u{1F6A8}' : '\u{1F4CB}';
   const urgencyColor = getUrgencyColor(result.dx);
   const riskColor = getRiskZone(riskScore).color;
+  const fillColor = FILL_COLOR[result.dx] || FILL_COLOR.optimal;
+  const topSupplementName = result.supplements.cards[0]?.name;
 
   const cardDefs = {
     overview: {
       id: 'overview',
       icon: overviewIcon,
       title: 'Overview',
-      summary: `TSH ${result.tsh} · ${STATE_LABEL[result.dx]}`,
+      illustration: <ThyroidIcon />,
+      body: [
+        <div className="card-summary-line">{`TSH ${result.tsh} · ${STATE_LABEL[result.dx]}`}</div>,
+        <span className="card-badge" style={{ color: riskColor, borderColor: riskColor }}>{`Risk ${riskScore}`}</span>,
+        <div className="card-tap-hint">{'Tap to open →'}</div>,
+      ],
       borderColor: riskColor,
       glowColor: { shadow: '6px 8px 24px rgba(0,0,0,0.5)', glow: hexToRgba(riskColor, 0.2) },
       pulseWorse: automations.worse,
       improvingTag: automations.improved,
       renderBack: () => (
         <>
+          <ComparisonTable rows={result.comparisonRows} />
           <div style={{ maxWidth: 320, margin: '0 auto 1.5rem' }}>
             <RiskGauge score={riskScore} onChange={onRiskScoreChange} />
           </div>
@@ -64,29 +133,42 @@ export default function ResultCards({ result, riskScore, onRiskScoreChange, auto
       id: 'interpretation',
       icon: '\u{1F9E0}',
       title: 'What this means',
-      summary: truncateWords(plainInterpretation, 8),
+      illustration: <BrainIcon />,
+      body: [
+        <div className="card-summary-line">{truncateWords(plainInterpretation, 8)}</div>,
+        <div className="card-tap-hint">{'Tap to open →'}</div>,
+      ],
       borderColor: '#3B82F6',
       glowColor: { shadow: '-4px 8px 24px rgba(0,0,0,0.5)', glow: 'rgba(59,130,246,0.2)' },
       renderBack: () => (
-        <InterpretationBack
-          text={plainInterpretation}
-          symptoms={result.symptoms}
-          actions={result.actions}
-          ageNote={result.ageNote}
-          statusNote={result.statusNote}
-          dotColor={SYMPTOM_DOT_COLOR[result.dx]}
-        />
+        <>
+          <ComparisonTable rows={result.comparisonRows} />
+          <InterpretationBack
+            text={plainInterpretation}
+            symptoms={result.symptoms}
+            actions={result.actions}
+            ageNote={result.ageNote}
+            statusNote={result.statusNote}
+            dotColor={SYMPTOM_DOT_COLOR[result.dx]}
+          />
+        </>
       ),
     },
     supplements: {
       id: 'supplements',
       icon: '\u{1F48A}',
       title: 'Supplements & Food',
-      summary: `${result.supplements.cards.length} supplements recommended`,
+      illustration: <MoleculeIcon />,
+      body: [
+        <div className="card-summary-line">{`${result.supplements.cards.length} supplements recommended`}</div>,
+        <div className="card-preview-line">{topSupplementName}</div>,
+        <div className="card-tap-hint">{'Tap to open →'}</div>,
+      ],
       borderColor: '#8B5CF6',
       glowColor: { shadow: '5px 6px 20px rgba(0,0,0,0.5)', glow: 'rgba(139,92,246,0.2)' },
       renderBack: () => (
         <>
+          <ComparisonTable rows={result.comparisonRows} />
           {result.supplements.cards.map((c, i) => (
             <div className="supplement-card-stacked" key={c.name}>
               <div className="supplement-name">
@@ -127,11 +209,17 @@ export default function ResultCards({ result, riskScore, onRiskScoreChange, auto
       id: 'action',
       icon: actionIcon,
       title: 'Action Plan',
-      summary: truncateWords(result.timeline[0].what, 10),
+      illustration: <CalendarIcon />,
+      body: [
+        <div className="card-summary-line">{truncateWords(result.timeline[0].what, 10)}</div>,
+        <span className="card-badge" style={{ color: urgencyColor, borderColor: urgencyColor }}>{URGENCY_LABEL[result.dx]}</span>,
+        <div className="card-tap-hint">{'Tap to open →'}</div>,
+      ],
       borderColor: urgencyColor,
       glowColor: { shadow: '-6px 10px 28px rgba(0,0,0,0.5)', glow: hexToRgba(urgencyColor, 0.2) },
       renderBack: (close) => (
         <>
+          <ComparisonTable rows={result.comparisonRows} />
           <div className="section-label">Monitoring Plan</div>
           <div className="section-title" style={{ fontSize: '1rem' }}>Suggested clinic visit schedule</div>
           <Timeline items={result.timeline} />
@@ -178,15 +266,19 @@ export default function ResultCards({ result, riskScore, onRiskScoreChange, auto
           <FlipCard
             key={card.id}
             slot={slot}
+            stagger={slot}
             entering={!entranceDone}
             borderColor={card.borderColor}
             glowColor={card.glowColor}
             icon={card.icon}
             title={card.title}
-            summary={card.summary}
+            frontBody={card.body}
+            illustration={card.illustration}
+            fillColor={fillColor}
             pulseWorse={card.pulseWorse}
             improvingTag={card.improvingTag}
             renderBack={card.renderBack}
+            pulse={pulsing}
           />
         ))}
       </div>
